@@ -24,12 +24,14 @@ try:
         user_name = data[1:1+user_name_length].decode()
         time_stamp = data[1+user_name_length:25+user_name_length].decode()
         message = data[25+user_name_length:].decode()
+        print(f"{user_name_length}, {user_name}, {time_stamp}, {message}")
 
         # クライアント辞書に登録がなければ登録する
         if address not in clients:
             clients[address] = {"name" : user_name, "time_stamp" : time_stamp, "inactive_count" : 0}
             print("New client, {} registered.".format(user_name))
-            sock.sendto(user_name.encode() + " registered.".encode(), address)
+            registered_message = "REGISTERED " + user_name
+            sock.sendto(registered_message.encode(), address)
 
         # データ送信してきたクライアントのタイムスタンプと削除候補からリセット
         clients[address]["time_stamp"] = time_stamp

@@ -37,23 +37,27 @@ except Exception as e:
 try:
     while True:
         data, address = sock.recvfrom(4096)
-        remote_user_name_length = data[0]
-        remote_user_name = data[1:1+remote_user_name_length].decode()
-        # この間にタイムスタンプが24文字で含まれているため、そのあとからメッセージ取得
-        remote_message = data[1+remote_user_name_length+25:].decode()
 
-        print(f"{remote_user_name}: {remote_message}")
+        if data.decode().startswith("REGISTERED"):
+            print("You have been registered as:", data.decode().split(" ")[1])
+        else:
+            remote_user_name_length = data[0]
+            remote_user_name = data[1:1+remote_user_name_length].decode()
+            # この間にタイムスタンプが24文字で含まれているため、そのあとからメッセージ取得
+            remote_message = data[1+remote_user_name_length+25:].decode()
 
-        message = input("メッセージを入力してください。")
-        if "抜けます" in message:
-            break
+            print(f"{remote_user_name}: {remote_message}")
 
-        time_stamp = get_ntp_time()
-        
-        try:
-            sock.sendto(user_name_length.to_bytes(1, byteorder="big") + user_name.encode() + time_stamp.encode() + message.encode(), (server_address, server_port))
-        except Exception as e:
-            print(str(e))
+            message = input("メッセージを入力してください。")
+            if "抜けます" in message:
+                break
+
+            time_stamp = get_ntp_time()
+            
+            try:
+                sock.sendto(user_name_length.to_bytes(1, byteorder="big") + user_name.encode() + time_stamp.encode() + message.encode(), (server_address, server_port))
+            except Exception as e:
+                print(str(e))      
 
 except KeyboardInterrupt:
     print("通信を切断します。")
