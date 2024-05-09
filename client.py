@@ -1,6 +1,7 @@
 import socket
 import ntplib
 import time
+import select
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -38,7 +39,9 @@ bufferSize = 4096
 
 try:
     while True:
-        try:
+        readable, writable, exceptional = select.select([sock], [sock], [sock], 1)
+
+        if sock in readable:
             data, address = sock.recvfrom(bufferSize)
 
             # もし、サーバーから新規登録通知が来たら、その旨を出力
@@ -52,19 +55,22 @@ try:
 
                 print(f"{remote_user_name}: {remote_message}")
 
-                message = input("メッセージを入力してください。")
-                if "抜けます" in message:
-                    break
+        if sock in writable:
 
-                time_stamp = get_ntp_time()
-                
-                try:
-                    sock.sendto(user_name_length.to_bytes(1, byteorder="big") + user_name.encode() + time_stamp.encode() + message.encode(), (server_address, server_port))
-                except Exception as e:
-                    print(str(e))      
-        # データがない場合、再ループ            
-        except BlockingIOError:
-            continue
+            message = input("メッセージを入力してください。")
+            if "抜けます" in message:
+                break
+
+            time_stamp = get_ntp_time()
+            
+            try:
+                sock.sendto(user_name_length.to_bytes(1, byteorder="big") + user_name.encode() + time_stamp.encode() + message.encode(), (server_address, server_port))
+            except Exception as e:
+                print(str(e))
+
+        if sock in exceptional:
+            print("ソケットにエラーが発生しました。")
+            break
 
 except KeyboardInterrupt:
     print("通信を切断します。")
