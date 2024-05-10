@@ -39,7 +39,7 @@ bufferSize = 4096
 
 try:
     while True:
-        readable, writable, exceptional = select.select([sock], [sock], [sock], 1)
+        readable, _, exceptional = select.select([sock], [], [sock], 1)
 
         if sock in readable:
             data, address = sock.recvfrom(bufferSize)
@@ -55,22 +55,21 @@ try:
 
                 print(f"{remote_user_name}: {remote_message}")
 
-        if sock in writable:
-
-            message = input("メッセージを入力してください。")
-            if "抜けます" in message:
-                break
-
-            time_stamp = get_ntp_time()
-            
-            try:
-                sock.sendto(user_name_length.to_bytes(1, byteorder="big") + user_name.encode() + time_stamp.encode() + message.encode(), (server_address, server_port))
-            except Exception as e:
-                print(str(e))
 
         if sock in exceptional:
             print("ソケットにエラーが発生しました。")
             break
+
+        message = input("メッセージを入力してください。")
+        if "抜けます" in message:
+            break
+
+        time_stamp = get_ntp_time()
+        
+        try:
+            sock.sendto(user_name_length.to_bytes(1, byteorder="big") + user_name.encode() + time_stamp.encode() + message.encode(), (server_address, server_port))
+        except Exception as e:
+            print(str(e))
 
 except KeyboardInterrupt:
     print("通信を切断します。")
