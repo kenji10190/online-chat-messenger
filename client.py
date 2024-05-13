@@ -11,16 +11,16 @@ class UDPClient:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         # 空は0.0.0.0と同じ意味で、クライアント側でアクティブなネットワークにアクセスできる。
         # port番号を0にすると、OS側で自動で競合しないport番号を設定してくれる。
-        self.sock.bind("", 0)
+        self.sock.bind(("", 0))
         # ノンブロッキングモードの設定
         self.sock.setblocking(0)
 
-    def get_ntp_time():
+    def get_ntp_time(self):
         # NTPのオブジェクトを作成
         client = ntplib.NTPClient()
         try:
-            # ntp.pool.org=NTPサーバー、バージョンが3
-            respose = client.request("ntp.pool.org", version=3)
+            # pool.ntp.org=NTPサーバー、バージョンが3
+            respose = client.request("pool.ntp.org", version=3)
             # timeモジュールからctimeで分かりやすい時刻表示に変更
             return time.ctime(respose.tx_time)
         except Exception as e:
@@ -28,42 +28,49 @@ class UDPClient:
 
     def send_data(self, user_name, message):
         user_name_length = len(user_name)
-        time_stamp = self.get_ntp_time()
+        time = self.get_ntp_time()
 
         try:
-            self.sock.send(user_name_length.to_bytes(1, "big") + user_name.encode() + time_stamp.encode() + message.encode())
+            self.sock.sendto(user_name_length.to_bytes(1, "big") + user_name.encode() + time.encode() + message.encode(), (self.server_address, self.server_port))
         except Exception as e:
             print(str(e))
 
     def receive_data(self):
         bufferSize = 4096
-        while True:
-            readable, _, exceptional = select.select([self.sock], [], [self.sock], 1)
 
-            if self.sock in readable:
-                data, _ = self.sock.recvfrom(bufferSize)
+        readable, _, exceptional = select.select([self.sock], [], [self.sock], 1)
 
-                if data.decode().startswith("REGISTERED"):
-                    print(f"{data.decode().split(' ')[1]} として登録されました。")
-                else:
-                    remote_user_name_length = data[0]
-                    remote_user_name = data[1:1+remote_user_name_length].decode()
-                    remote_message = data[25+remote_user_name_length:].decode()
+        if self.sock in readable:
+            data, _ = self.sock.recvfrom(bufferSize)
 
-                    print(f"{remote_user_name}: {remote_message}")
-            
-            if self.sock in exceptional:
-                print("ソケットにエラーが発生しました")
-                break
+            if data.decode().startswith("REGISTERED"):
+                print(f"{data.decode().split(' ')[1]} として登録されました。")
+            else:
+                remote_user_name_length = data[0]
+                remote_user_name = data[1:1+remote_user_name_length].decode()
+                remote_message = data[25+remote_user_name_length:].decode()
+
+                print(f"{remote_user_name}: {remote_message}")
+        
+        if self.sock in exceptional:
+            print("ソケットにエラーが発生しました")
 
     def run_client(self):
         user_name = input("ユーザー名を入力してください")
-        while True:
-            self.receive_data()
-            message = input("メッセージを入力してください")
-            if "抜けます" in message:
-                break
-            self.send_data(user_name, message)
+        try:
+            while True:
+                    self.receive_data()
+                    message = input("メッセージを入力してください")
+                    if "out" in message:
+                        print("close the connection.")
+                        break
+                    self.send_data(user_name, message)
+
+        except KeyboardInterrupt:
+            print("close the connection with server.")
+
+        finally:
+            self.sock.close()
 
 if __name__ == "__main__":
     server_address = input("サーバーアドレスを入力してください")
