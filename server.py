@@ -49,9 +49,7 @@ try:
             # 削除予定クライアントリストを作成し、削除候補回数が6以上のクライアントを追加する。
             inactive_clients = [addr for addr, info in clients.items() if info["inactive_count"] >= 6]
 
-            # データ送信していない全クライアントについて削除候補に更新し、
-            # もし、候補回数が6以上になったら、削除リストに追加する。
-            # 満たしていなければ、受け取っているデータを転送する
+            # データ送信していないクライアントについて削除候補回数を更新する。
             for client_address in clients.keys():
                 if client_address != address:
                     clients[client_address]["inactive_count"] += 1
