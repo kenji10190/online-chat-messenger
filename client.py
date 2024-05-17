@@ -2,6 +2,7 @@ import socket
 import ntplib
 import time
 import select
+from datetime import datetime
 
 class UDPClient:
 
@@ -18,15 +19,16 @@ class UDPClient:
         client = ntplib.NTPClient()
         try:
             # pool.ntp.org=NTPサーバー、バージョンが3
-            respose = client.request("pool.ntp.org", version=3)
+            response = client.request("pool.ntp.org", version=3)
             # timeモジュールからctimeで分かりやすい時刻表示に変更
-            return time.ctime(respose.tx_time)
+            return datetime.fromtimestamp(response.tx_time)
         except Exception as e:
-            print(str(e))
+            print("時刻取得にエラーが発生しました\n")
+            return datetime.now()
 
     def send_data(self, user_name, message):
         user_name_length = len(user_name)
-        time_stamp = self.get_ntp_time()
+        time_stamp = datetime.strftime(self.get_ntp_time(), "%Y-%m-%d %H:%m:%s")
 
         try:
             # 数値をバイナリにするにはto_byteを使用する。引数は使用するバイト数とエンディアン形式を指定する。
@@ -47,8 +49,8 @@ class UDPClient:
             else:
                 remote_user_name_length = data[0]
                 remote_user_name = data[1:1+remote_user_name_length].decode()
-                # 時刻情報が24文字なので、その後から指定する。
-                remote_message = data[25+remote_user_name_length:].decode()
+                # 時刻情報が19文字なので、その後から指定する。
+                remote_message = data[20+remote_user_name_length:].decode()
 
                 print(f"{remote_user_name}: {remote_message}")
         
