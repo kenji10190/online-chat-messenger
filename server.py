@@ -12,7 +12,8 @@ class UDPServer:
         self.server_address = server_address
         self.server_port = server_port
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(self.server_address, self.server_port)
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.sock.bind((self.server_address, self.server_port))
         self.sock.setblocking(0)
         self.clients = {}
         self.bufferSize = 4096
@@ -30,7 +31,7 @@ class UDPServer:
         self.clients[addr] = {"name" : user_name, "time_stamp" : time_stamp}
         print(f"New client {user_name} registered.")
         try:
-            self.sock.sendto(f"サーバーに{user_name}として登録されました\n".encode(), addr)
+            self.sock.sendto(f"REGISTERED {user_name}".encode(), addr)
         except Exception as e:
             print(str(e))
 
@@ -49,12 +50,10 @@ class UDPServer:
 
                 user_name_length = data[0]
                 user_name = data[1 : 1+user_name_length].decode()
-                time_stamp = datetime.strptime(data[1+user_name_length : 20+user_name_length].decode(), "%Y-%m-%d %H:%m:%s")
+                time_stamp = datetime.strptime(data[1+user_name_length : 20+user_name_length].decode(), "%Y-%m-%d %H:%M:%S")
                 message = data[20+user_name_length : ].decode()
 
                 print(f"{user_name}, {time_stamp}, {message}")
-
-                self.delete_client()
 
                 if addr not in self.clients:
                     self.register_client(addr, user_name, time_stamp)
@@ -67,27 +66,29 @@ class UDPServer:
         except Exception as e:
             print(str(e))
 
-    def send_data(self, addr, data):
-        for client_addr in self.sock:
-            if self.sock[client_addr] != addr:
+    def send_data(self, sender_addr, data):
+        for client_addr in self.clients:
+            if client_addr != sender_addr:
                 try:
-                    self.sock.sendto(data, addr)
+                    self.sock.sendto(data, client_addr)
                 except Exception as e:
                     print(str(e))
 
     def run_server(self):
-        server = UDPServer("", 9001)
         try:
             while True:
                 self.receive_data()
                 self.delete_expired_client()
-                time.sleep(1)
-        
+                
         except KeyboardInterrupt:
             print("サーバーを終了します\n")
 
         finally:
             self.sock.close()
+
+if __name__ == "__main__":
+    server = UDPServer("", 9001)
+    server.run_server()
 
 
 # # create UDP socket

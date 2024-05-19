@@ -22,13 +22,13 @@ class UDPClient:
             response = client.request("pool.ntp.org", version=3)
             # timeモジュールからctimeで分かりやすい時刻表示に変更
             return datetime.fromtimestamp(response.tx_time)
-        except Exception as e:
+        except Exception:
             print("時刻取得にエラーが発生しました\n")
             return datetime.now()
 
     def send_data(self, user_name, message):
         user_name_length = len(user_name)
-        time_stamp = datetime.strftime(self.get_ntp_time(), "%Y-%m-%d %H:%m:%s")
+        time_stamp = datetime.strftime(self.get_ntp_time(), "%Y-%m-%d %H:%M:%S")
 
         try:
             # 数値をバイナリにするにはto_byteを使用する。引数は使用するバイト数とエンディアン形式を指定する。
