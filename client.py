@@ -63,7 +63,7 @@ class UDPClient:
             while True:
                     self.receive_data()
                     message = input("メッセージを入力してください\n")
-                    if "out" in message:
+                    if "抜けます" in message:
                         print("通信を切断します\n")
                         break
                     self.send_data(user_name, message)
