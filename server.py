@@ -26,9 +26,9 @@ class UDPServer:
         client = ntplib.NTPClient()
         try:
             # pool.ntp.orgはNTPサーバーのこと。3はサーバーのバージョン
-            response = client.request("pool.ntp.org", 3)
+            response = client.request("ntp.nict.jp", version=3)
             # tx_timeはNTPサーバーから取得した時刻情報をUNIXタイムスタンプに変換。
-            # fromtimestampはPOSIXタイムスタンプを引数に、datetimeオブジェクトに変換し、取り扱いしやすくする。
+            # fromtimestampはUNIXタイムスタンプを引数に、datetimeオブジェクトに変換。
             return datetime.fromtimestamp(response.tx_time)
         except Exception:
             print("時刻取得にエラーが発生しました\n")
