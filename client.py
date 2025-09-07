@@ -73,7 +73,7 @@ class UDPClient:
         user_name = input("ユーザー名を入力してください\n")
         self.send_data(user_name, "")
 
-        receive_message = threading.Thread(target=self.receive_data())
+        receive_message = threading.Thread(target=self.receive_data)
         receive_message.daemon = True
         receive_message.start()
 
