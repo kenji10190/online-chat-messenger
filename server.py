@@ -1,9 +1,6 @@
 import socket
-import os
 import select
 import ntplib
-import time
-from pathlib import Path
 from datetime import datetime, timedelta
 
 class UDPServer:
@@ -15,7 +12,7 @@ class UDPServer:
         # クライアントがアクセスできるようにバインドする。
         self.sock.bind((self.server_address, self.server_port))
         # ノンブロッキングモードに設定。プログラムを途中で止めないようにする。
-        self.sock.setblocking(0)
+        self.sock.setblocking(False)
         # 接続してくるクライアントのリストを初期化
         self.clients = {}
         self.bufferSize = 4096  
