@@ -1,7 +1,7 @@
 import socket
 import ntplib
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 import threading
 
 class UDPClient:
@@ -15,25 +15,30 @@ class UDPClient:
         # ノンブロッキングモードの設定
         self.sock.setblocking(False)
         self.print_lock = threading.Lock()
+        self.time_offset = self.time_sync()
         self.running = True
 
-    # NTPサーバー(日本)から現在時刻の取得
-    def get_ntp_time(self):
+    # NTPサーバー(日本)の時刻とローカル時刻の差分計算
+    def time_sync(self):
         # NTPのオブジェクトを作成
         client = ntplib.NTPClient()
         try:
             # ntp.nict.jp=NTPサーバー、バージョンが3
             response = client.request("ntp.nict.jp", version=3)
             # tx_timeでntpサーバーの時刻をUNIXタイムスタンプに変換し、datetimeオブジェクトに変換 
-            return datetime.fromtimestamp(response.tx_time)
+            return datetime.now() - datetime.fromtimestamp(response.tx_time)
         except Exception:
             print("時刻取得にエラーが発生しました\n")
-            return datetime.now()
+            return timedelta(0) 
+
+    # 現在時刻取得
+    def get_current_time(self):
+        return datetime.now() + self.time_sync()
 
     # 入力メッセージの送信
     def send_data(self, user_name, message):
         user_name_length = len(user_name)
-        time_stamp = datetime.strftime(self.get_ntp_time(), "%Y-%m-%d %H:%M:%S")
+        time_stamp = datetime.strftime(self.get_current_time(), "%Y-%m-%d %H:%M:%S")
 
         try:
             # 数値をバイナリにするにはto_byteを使用する。引数は使用するバイト数とエンディアン形式を指定する。
@@ -49,12 +54,13 @@ class UDPClient:
 
     # サーバーや他のユーザーからのメッセージ受信
     def receive_data(self):
-        bufferSize = 4096
+        buffer_size = 4096
 
         while self.running:
             try:
-                data, _ = self.sock.recvfrom(bufferSize)
+                data, _ = self.sock.recvfrom(buffer_size)
 
+                # スレッド切り替え
                 with self.print_lock:
                     # サーバーからのユーザー登録メッセージの処理
                     if data.decode().startswith("REGISTERED"):
@@ -70,7 +76,7 @@ class UDPClient:
 
                         time_only = remote_time_stamp.split(" ")[1] if " " in remote_time_stamp else remote_time_stamp
                         
-                        print(f"\n{time_only} {remote_user_name}: {remote_message}")
+                        print(f"\n{remote_user_name}: {remote_message}, {time_only}")
                         print("メッセージ：", end="", flush=True)
 
             except BlockingIOError:
@@ -79,9 +85,11 @@ class UDPClient:
                 # もし、ユーザー自身がアプリから抜けた場合にはエラー出力する必要なし
                 if self.running:
                     print(f"\n受信エラー: {e}") 
-        
+    
+    # クライアントソケット起動
     def run_client(self):
         user_name = ""
+        # バリデーション
         while not user_name or len(user_name) > 50:
             user_name = input("ユーザー名を入力してください。(50文字以内で設定してください)").strip()
             if not user_name:
@@ -91,6 +99,7 @@ class UDPClient:
 
         self.send_data(user_name, "")
 
+        # メッセージ受信を別スレッドにして、裏で処理
         receive_message = threading.Thread(target=self.receive_data)
         receive_message.daemon = True
         receive_message.start()
@@ -99,11 +108,11 @@ class UDPClient:
         print("-" * 40)
         try:
             while True:
-                    message = input("メッセージを入力してください\n")
-                    if "終了" in message:
-                        print("通信を切断します\n")
-                        break
-                    self.send_data(user_name, message)
+                message = input("メッセージを入力してください\n")
+                if "終了" in message:
+                    print("通信を切断します\n")
+                    break
+                self.send_data(user_name, message)
 
         except KeyboardInterrupt:
             print("強制終了します\n")
